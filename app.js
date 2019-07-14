@@ -12,6 +12,13 @@ const budgetController = (function() {
     this.value = value;
   };
 
+  const calculateTotal = function(type) {
+    let sum = 0;
+
+    data.allItems[type].forEach(cur => (sum += cur.value));
+    data.totals[type] = sum;
+  };
+
   const data = {
     allItems: {
       exp: [],
@@ -20,7 +27,9 @@ const budgetController = (function() {
     totals: {
       exp: 0,
       inc: 0
-    }
+    },
+    budget: 0,
+    percentage: -1
   };
 
   return {
@@ -42,6 +51,31 @@ const budgetController = (function() {
       return newItem;
     },
 
+    calculateBudget: () => {
+      // calculate total inc and exp
+      calculateTotal("exp");
+      calculateTotal("inc");
+
+      // calculate the budget
+      data.budget = data.totals.inc - data.totals.exp;
+
+      //calculate the % of the income that we spent
+      if (data.totals.inc > 0) {
+        data.percentage = Math.round((data.totals.exp / data.totals.inc) * 100);
+      } else {
+        data.percentage = -1;
+      }
+    },
+
+    getBudget: () => {
+      return {
+        budget: data.budget,
+        totalIncome: data.totals.inc,
+        totalExp: data.totals.exp,
+        percentage: data.percentage
+      };
+    },
+
     testing: () => {
       console.log(data);
     }
@@ -54,7 +88,13 @@ const uiController = (function() {
     inputType: ".add__type",
     inputDescription: ".add__description",
     inputValue: ".add__value",
-    inputBtn: ".add__btn"
+    inputBtn: ".add__btn",
+    incomeContainer: ".income__list",
+    expenseContainer: ".expenses__list",
+    budgetValue: ".budget__value",
+    budgetInc: ".budget__income--value",
+    budgetExp: ".budget__expenses--value",
+    budgetPercentage: ".budget__expenses--percentage"
   };
 
   return {
@@ -62,8 +102,58 @@ const uiController = (function() {
       return {
         type: document.querySelector(domStrings.inputType).value,
         description: document.querySelector(domStrings.inputDescription).value,
-        value: document.querySelector(domStrings.inputValue).value
+        value: parseFloat(document.querySelector(domStrings.inputValue).value)
       };
+    },
+    addListItem: (obj, type) => {
+      let html = "";
+      let element = "";
+      if (type === "inc") {
+        element = domStrings.incomeContainer;
+        html = `<div class="item clearfix" id="income-${
+          obj.id
+        }"><div class="item__description">${
+          obj.description
+        }</div><div class="right clearfix"><div class="item__value">${
+          obj.value
+        }</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>`;
+      } else if (type === "exp") {
+        element = domStrings.expenseContainer;
+
+        html = `<div class="item clearfix" id="expense-${
+          obj.id
+        }"><div class="item__description">${
+          obj.description
+        }</div><div class="right clearfix"><div class="item__value">${
+          obj.value
+        }</div><div class="item__percentage">21%</div><div class="item__delete"><button class="item__delete--btn"><i class="ion-ios-close-outline"></i></button></div></div></div>`;
+      }
+
+      document.querySelector(element).insertAdjacentHTML("beforeend", html);
+    },
+
+    clearFields: () => {
+      const fields = document.querySelectorAll(
+        domStrings.inputDescription + ", " + domStrings.inputValue
+      );
+
+      fields.forEach(field => (field.value = ""));
+      fields[0].focus();
+    },
+    showBudget: budget => {
+      document.querySelector(domStrings.budgetValue).innerHTML = budget.budget;
+      document.querySelector(domStrings.budgetInc).innerHTML = `+ ${
+        budget.totalIncome
+      }`;
+      document.querySelector(domStrings.budgetExp).innerHTML = `- ${
+        budget.totalExp
+      }`;
+      if (budget.percentage > 0) {
+        document.querySelector(domStrings.budgetPercentage).innerHTML = `${
+          budget.percentage
+        }%`;
+      } else
+        document.querySelector(domStrings.budgetPercentage).innerHTML = "---";
     },
 
     getDomStrings: () => domStrings
@@ -84,24 +174,48 @@ const controller = (function(budgetCtrl, uiCtrl) {
     });
   };
 
+  const updateBudget = () => {
+    // calc the budget
+    budgetCtrl.calculateBudget();
+
+    // return the budget
+    const budget = budgetCtrl.getBudget();
+
+    // display the budget
+    uiCtrl.showBudget(budget);
+  };
+
   const ctrlAddItem = () => {
     // get the field input data
     const input = uiCtrl.getInput();
 
-    // add the item to the budget controller
-    const newItem = budgetCtrl.addItem(
-      input.type,
-      input.description,
-      input.value
-    );
+    if (!isNaN(input.value) && input.value > 0 && input.description !== "") {
+      // add the item to the budget controller
+      const newItem = budgetCtrl.addItem(
+        input.type,
+        input.description,
+        input.value
+      );
 
-    // add the item to the ui
-    // calc the budget
-    // display the budget
+      // add the item to the ui
+      uiCtrl.addListItem(newItem, input.type);
+
+      // clear the input fields
+      uiCtrl.clearFields();
+
+      // calculate and update the budget
+      updateBudget();
+    }
   };
 
   return {
     init: () => {
+      uiCtrl.showBudget({
+        budget: 0,
+        totalIncome: 0,
+        totalExp: 0,
+        percentage: -1
+      });
       setupEventListeners();
     }
   };
