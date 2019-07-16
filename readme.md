@@ -7,3 +7,5 @@ This is a project from "The complete JS course" by Jonas Schmedtmann from Udemy.
 - Module pattern
 - Closures
 - Function constructors
+- DOM manipulation
+- Event listeners
