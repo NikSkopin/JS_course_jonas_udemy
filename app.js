@@ -51,6 +51,15 @@ const budgetController = (function() {
       return newItem;
     },
 
+    deleteItem: (type, id) => {
+      let ids = data.allItems[type].map(current => current.id);
+      const index = ids.indexOf(id);
+
+      if (index !== -1) {
+        data.allItems[type].splice(index, 1);
+      }
+    },
+
     calculateBudget: () => {
       // calculate total inc and exp
       calculateTotal("exp");
@@ -94,7 +103,8 @@ const uiController = (function() {
     budgetValue: ".budget__value",
     budgetInc: ".budget__income--value",
     budgetExp: ".budget__expenses--value",
-    budgetPercentage: ".budget__expenses--percentage"
+    budgetPercentage: ".budget__expenses--percentage",
+    container: ".container"
   };
 
   return {
@@ -110,7 +120,7 @@ const uiController = (function() {
       let element = "";
       if (type === "inc") {
         element = domStrings.incomeContainer;
-        html = `<div class="item clearfix" id="income-${
+        html = `<div class="item clearfix" id="inc-${
           obj.id
         }"><div class="item__description">${
           obj.description
@@ -120,7 +130,7 @@ const uiController = (function() {
       } else if (type === "exp") {
         element = domStrings.expenseContainer;
 
-        html = `<div class="item clearfix" id="expense-${
+        html = `<div class="item clearfix" id="exp-${
           obj.id
         }"><div class="item__description">${
           obj.description
@@ -130,6 +140,11 @@ const uiController = (function() {
       }
 
       document.querySelector(element).insertAdjacentHTML("beforeend", html);
+    },
+
+    deleteListItem: selectorID => {
+      const element = document.getElementById(selectorID);
+      element.parentNode.removeChild(element);
     },
 
     clearFields: () => {
@@ -172,6 +187,10 @@ const controller = (function(budgetCtrl, uiCtrl) {
         ctrlAddItem();
       }
     });
+
+    document
+      .querySelector(DOM.container)
+      .addEventListener("click", ctrlDeleteItem);
   };
 
   const updateBudget = () => {
@@ -204,6 +223,18 @@ const controller = (function(budgetCtrl, uiCtrl) {
       uiCtrl.clearFields();
 
       // calculate and update the budget
+      updateBudget();
+    }
+  };
+
+  const ctrlDeleteItem = e => {
+    const itemID = e.target.parentNode.parentNode.parentNode.parentNode.id;
+
+    if (itemID) {
+      const type = itemID.split("-")[0];
+      const ID = +itemID.split("-")[1];
+      budgetCtrl.deleteItem(type, ID);
+      uiCtrl.deleteListItem(itemID);
       updateBudget();
     }
   };
